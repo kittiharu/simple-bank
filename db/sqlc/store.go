@@ -94,9 +94,9 @@ func (store *Store) TransferTx(ctx context.Context, arg TransferTxParams) (Trans
 		// }
 
 		if arg.FromAccountID < arg.ToAccountID {
-			result.FromAccount, result.ToAccount, err = store.addMoney(ctx, arg.FromAccountID, -arg.Amount, arg.ToAccountID, arg.Amount)
+			result.FromAccount, result.ToAccount, err = addMoney(ctx, q, arg.FromAccountID, -arg.Amount, arg.ToAccountID, arg.Amount)
 		} else {
-			result.ToAccount, result.FromAccount, err = store.addMoney(ctx, arg.ToAccountID, arg.Amount, arg.FromAccountID, -arg.Amount)
+			result.ToAccount, result.FromAccount, err = addMoney(ctx, q, arg.ToAccountID, arg.Amount, arg.FromAccountID, -arg.Amount)
 		}
 
 		return nil
@@ -105,8 +105,8 @@ func (store *Store) TransferTx(ctx context.Context, arg TransferTxParams) (Trans
 	return result, err
 }
 
-func (store *Store) addMoney(ctx context.Context, account1Id, amount1, account2Id, amount2 int64) (account1, account2 Account, err error) {
-	account1, err = store.AddAccountAmount(ctx, AddAccountAmountParams{
+func addMoney(ctx context.Context, q *Queries, account1Id, amount1, account2Id, amount2 int64) (account1, account2 Account, err error) {
+	account1, err = q.AddAccountAmount(ctx, AddAccountAmountParams{
 		ID:     account1Id,
 		Amount: amount1,
 	})
@@ -114,7 +114,7 @@ func (store *Store) addMoney(ctx context.Context, account1Id, amount1, account2I
 		return
 	}
 
-	account2, err = store.AddAccountAmount(ctx, AddAccountAmountParams{
+	account2, err = q.AddAccountAmount(ctx, AddAccountAmountParams{
 		ID:     account2Id,
 		Amount: amount2,
 	})
