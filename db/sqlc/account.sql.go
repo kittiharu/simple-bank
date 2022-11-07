@@ -17,8 +17,8 @@ RETURNING id, owner, amount, currency, created_at
 `
 
 type AddAccountAmountParams struct {
-	Amount int64
-	ID     int64
+	Amount int64 `json:"amount"`
+	ID     int64 `json:"id"`
 }
 
 func (q *Queries) AddAccountAmount(ctx context.Context, arg AddAccountAmountParams) (Account, error) {
@@ -44,9 +44,9 @@ RETURNING id, owner, amount, currency, created_at
 `
 
 type CreateAccountParams struct {
-	Owner    string
-	Amount   int64
-	Currency string
+	Owner    string `json:"owner"`
+	Amount   int64  `json:"amount"`
+	Currency string `json:"currency"`
 }
 
 func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (Account, error) {
@@ -117,8 +117,8 @@ OFFSET $2
 `
 
 type ListAccountsParams struct {
-	Limit  int32
-	Offset int32
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
 }
 
 func (q *Queries) ListAccounts(ctx context.Context, arg ListAccountsParams) ([]Account, error) {
@@ -127,7 +127,7 @@ func (q *Queries) ListAccounts(ctx context.Context, arg ListAccountsParams) ([]A
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Account
+	items := []Account{}
 	for rows.Next() {
 		var i Account
 		if err := rows.Scan(
@@ -158,8 +158,8 @@ RETURNING id, owner, amount, currency, created_at
 `
 
 type UpdateAccountParams struct {
-	ID     int64
-	Amount int64
+	ID     int64 `json:"id"`
+	Amount int64 `json:"amount"`
 }
 
 func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) (Account, error) {
