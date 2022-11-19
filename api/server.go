@@ -8,14 +8,14 @@ import (
 	"github.com/go-playground/validator/v10"
 	db "github.com/techschool/simplebank/db/sqlc"
 	"github.com/techschool/simplebank/token"
+	"github.com/techschool/simplebank/usecase"
 	"github.com/techschool/simplebank/util"
 )
 
 type Server struct {
 	config     util.Config
-	store      db.Store
-	router     *gin.Engine
 	tokenMaker token.Maker
+	router     *gin.Engine
 }
 
 func NewServer(store db.Store, config util.Config) (*Server, error) {
@@ -26,38 +26,33 @@ func NewServer(store db.Store, config util.Config) (*Server, error) {
 
 	server := &Server{
 		config:     config,
-		store:      store,
 		tokenMaker: tokenMaker,
 	}
-
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
 		v.RegisterValidation("currency", validCurrency)
 	}
 
-	server.setupRouter()
-	return server, nil
-}
-
-func (server *Server) setupRouter() {
 	router := gin.Default()
+	authRoutes := router.Group("/").Use(authMiddleware(tokenMaker))
 
-	router.POST("/users", server.createUser)
-	router.POST("/login", server.login)
-	router.POST("/tokens/renew_access", server.renewAccessToken)
+	userUsecase := usecase.NewUserUsecase(store, tokenMaker, config)
+	sessionUsecase := usecase.NewSessionUsecase(store)
+	accountUseCase := usecase.NewAccountUseCase(store)
+	transferUsecase := usecase.NewTransferUsecase(store)
 
-	authRoutes := router.Group("/").Use(authMiddleware(server.tokenMaker))
-	authRoutes.POST("/accounts", server.createAccount)
-	authRoutes.GET("/accounts/:id", server.getAccount)
-	authRoutes.GET("/accounts", server.listAccounts)
-	authRoutes.POST("/transfer", server.transferBalance)
+	NewAccountHandler(server, authRoutes, accountUseCase)
+	NewTransferHandler(authRoutes, transferUsecase, accountUseCase)
+	NewUserHandler(router, userUsecase)
+	NewTokenHandler(router, sessionUsecase, tokenMaker, config)
 
 	server.router = router
+	return server, nil
 }
 
 func errorResponse(err error) gin.H {
 	return gin.H{"error": err.Error()}
 }
 
-func (server *Server) Start(address string) {
-	server.router.Run(address)
+func (server *Server) Run() {
+	server.router.Run(server.config.HttpServerAddress)
 }

@@ -11,11 +11,12 @@ import (
 	"github.com/techschool/simplebank/util"
 )
 
-func newTestServer(t *testing.T, store db.Store) *Server {
+func runTestServer(t *testing.T, store db.Store) *Server {
 	config := util.Config{
 		TokenSymmetricKey:   util.RandomString(32),
 		AccessTokenDuration: time.Minute,
 	}
+
 	server, err := NewServer(store, config)
 	require.NoError(t, err)
 

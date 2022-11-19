@@ -46,8 +46,10 @@ func main() {
 	runDbMigration(config.MigrationUrl, config.DBSource)
 
 	store := db.NewStore(conn)
-	go runGrpcGateway(store, config)
-	runGrpcServer(store, config)
+
+	// go runGrpcGateway(store, config)
+	// runGrpcServer(store, config)
+	runGinServer(store, config)
 }
 
 func runGrpcServer(store db.Store, config util.Config) {
@@ -141,5 +143,5 @@ func runGinServer(store db.Store, config util.Config) {
 		return
 	}
 
-	server.Start(config.HttpServerAddress)
+	server.Run()
 }

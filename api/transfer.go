@@ -7,25 +7,32 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	db "github.com/techschool/simplebank/db/sqlc"
+	"github.com/techschool/simplebank/domain"
 	"github.com/techschool/simplebank/token"
+	"github.com/techschool/simplebank/usecase"
 )
 
-type transferRequest struct {
-	FromAccountID int64  `json:"fromAccountId" binding:"required,min=1"`
-	ToAccountID   int64  `json:"toAccountId" binding:"required,min=1"`
-	Amount        int64  `json:"amount" binding:"required,gt=0"`
-	Currency      string `json:"currency" binding:"required,currency"`
+type TransferHandler struct {
+	transferUsecase usecase.TransferUsecase
+	accountUsecase  usecase.AccountUseCase
 }
 
-func (server *Server) transferBalance(ctx *gin.Context) {
-	var req transferRequest
+func NewTransferHandler(routes gin.IRoutes, transferUsecase usecase.TransferUsecase, accountUsecase usecase.AccountUseCase) {
+	handler := &TransferHandler{
+		transferUsecase: transferUsecase,
+		accountUsecase:  accountUsecase,
+	}
+	routes.POST("/transfer", handler.transferBalance)
+}
+
+func (handler *TransferHandler) transferBalance(ctx *gin.Context) {
+	var req domain.TransferRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 
-	fromAccount, valid := server.validAccount(ctx, req.FromAccountID, req.Currency)
+	fromAccount, valid := handler.validAccount(ctx, req.FromAccountID, req.Currency)
 	if !valid {
 		return
 	}
@@ -37,17 +44,12 @@ func (server *Server) transferBalance(ctx *gin.Context) {
 		return
 	}
 
-	_, valid = server.validAccount(ctx, req.ToAccountID, req.Currency)
+	_, valid = handler.validAccount(ctx, req.ToAccountID, req.Currency)
 	if !valid {
 		return
 	}
 
-	arg := db.TransferTxParams{
-		FromAccountID: req.FromAccountID,
-		ToAccountID:   req.ToAccountID,
-		Amount:        req.Amount,
-	}
-	result, err := server.store.TransferTx(ctx, arg)
+	result, err := handler.transferUsecase.TransferBalance(ctx.Request.Context(), req)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
@@ -56,8 +58,8 @@ func (server *Server) transferBalance(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, result)
 }
 
-func (server *Server) validAccount(ctx *gin.Context, accountId int64, currency string) (db.Account, bool) {
-	account, err := server.store.GetAccount(ctx, accountId)
+func (handler *TransferHandler) validAccount(ctx *gin.Context, accountId int64, currency string) (domain.Account, bool) {
+	account, err := handler.accountUsecase.GetAccount(ctx, accountId)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			ctx.JSON(http.StatusNotFound, errorResponse(err))
